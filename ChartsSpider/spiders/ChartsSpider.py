@@ -1,13 +1,12 @@
 import scrapy
 from datetime import date, timedelta
-from urllib.parse import parse_qs
 
+MIN_DATE = date(1952,11,14) #UK Weekly Singles Charts began in 1952, and TCTM does not record singles charts after the 20th century.
+MAX_DATE = date(1999,12,26)
 class ChartsSpider(scrapy.Spider):
     name = "charts"
 
     def get_date(self): #Argument validation
-        minimum_date = date(1952,11,14) #UK Weekly Singles Charts began in 1952, and TCTM does not record singles charts after the 20th century.
-        maximum_date = date(1999,12,26)
         options = ["year", "decade", "week"] #Mutually exclusive arguments
         selected_option = [arg for arg in options if hasattr(self, arg)]
         if hasattr(self, "from_date") != hasattr(self, "to_date"):
@@ -29,28 +28,28 @@ class ChartsSpider(scrapy.Spider):
             to_date = date(decade+9,12,31)
         elif "week" in selected_option:
             from_date = date.fromisoformat(self.week)
-            to_date = from_date + timedelta(days=6)
+            to_date = min(from_date + timedelta(days=6), MAX_DATE)
         elif "range" in selected_option:
             from_date = date.fromisoformat(self.from_date)
             to_date = date.fromisoformat(self.to_date)
         else: #Default parameters - set to scrape all existing charts.
-            from_date = minimum_date
-            to_date = maximum_date
+            from_date = MIN_DATE
+            to_date = MAX_DATE
 
         if from_date > to_date:
-            raise ValueError("from_date cannot be greater than end_date")
+            raise ValueError("from_date cannot be greater than to_date")
         if "year" in selected_option or "decade" in selected_option: #Clamping
-            if to_date < minimum_date:
-                raise ValueError("Date cannot be before 1952-11-14")
-            if from_date > maximum_date:
-                raise ValueError("Date cannot be after 1999-12-26")
-            from_date = max(from_date, minimum_date)
-            to_date = min(to_date, maximum_date)
+            if to_date < MIN_DATE:
+                raise ValueError(f"Date cannot be before {MIN_DATE}")
+            if from_date > MAX_DATE:
+                raise ValueError(f"Date cannot be after {MAX_DATE}")
+            from_date = max(from_date, MIN_DATE)
+            to_date = min(to_date, MAX_DATE)
         else: #Bounds checking
-            if from_date < minimum_date:
-                raise ValueError("Date cannot be before 1952-11-14")
-            if to_date > maximum_date:
-                raise ValueError("Date cannot be after 1999-12-26")
+            if from_date < MIN_DATE:
+                raise ValueError(f"Date cannot be before {MIN_DATE}")
+            if to_date > MAX_DATE:
+                raise ValueError(f"Date cannot be after {MAX_DATE}")
         return from_date, to_date
 
     def start_requests(self): #Crawler iterates through every specified weekly chart, by partitioning the date range into 7 day-long intervals and adjusting the URL search parameters
@@ -108,7 +107,7 @@ class ChartsSpider(scrapy.Spider):
     def parse_song(self, response, item): #Scrapes individual song webpages for their genre and style. Webpages can be revisited from Scrapy's cache
         def values(label):
             texts = response.css(f'div.artist_info_left:contains("{label}") + div.artist_info_right::text').getall()
-            return "|".join(text for text in texts)
+            return "|".join(text.strip() for text in texts if text.strip()) or None
         item["genre"] = values("Genre")
         item["style"] = values("Style") #Note: A number of songs do not list a style
         item["song_url"] = response.url
