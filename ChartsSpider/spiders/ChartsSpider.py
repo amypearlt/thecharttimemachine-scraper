@@ -1,8 +1,20 @@
 import scrapy
 from datetime import date, timedelta
+from urllib.parse import parse_qs, urlsplit
 
 MIN_DATE = date(1952,11,14) #UK Weekly Singles Charts began in 1952, and TCTM does not record singles charts after the 20th century.
 MAX_DATE = date(1999,12,26)
+
+def chart_url(from_date, to_date):
+    return f"https://www.charttimemachine.com/?format=keyword&date_from={from_date}&date_to={to_date}&pos_high=1&pos_low=100&results=100"
+
+def to_iso(raw):
+    if not raw:
+        return None
+    m, d, y = (int(p) for p in raw.strip().split("/"))
+    return date(1900 + y, m, d).isoformat()
+
+
 class ChartsSpider(scrapy.Spider):
     name = "charts"
 
@@ -62,8 +74,7 @@ class ChartsSpider(scrapy.Spider):
         
         while from_date <= to_date:
             week_date = min(from_date + timedelta(days=6), to_date)
-            url = f"https://www.charttimemachine.com/?format=keyword&date_from={from_date}&date_to={week_date}&pos_high=1&pos_low=100&results=100"
-            yield scrapy.Request(url, callback=self.parse)
+            yield scrapy.Request(chart_url(from_date, week_date), callback=self.parse)
             from_date += timedelta(days=7)
 
     def parse(self, response): #Scrapes weekly charts and extracts their available relevant data, parsing the webpage's HTML.
@@ -71,6 +82,14 @@ class ChartsSpider(scrapy.Spider):
         if not charts:
             self.logger.warning(f"No chart entries found from {response.url}")
 
+        query = parse_qs(urlsplit(response.url).query)
+        if query["date_from"] != query["date_to"]: #Charts were originally dated on Fridays, changing to Thursday in 1960, Wednesday in 1967 and Sunday in 1969, resulting in 2 chart weeks being merged into one window
+            dates = {to_iso(chart.css("td:nth-child(5) span.show_mobile::text").get()) for chart in charts} - {None}
+            if len(dates) > 1:
+                for week_date in dates:
+                    yield scrapy.Request(chart_url(week_date, week_date), callback=self.parse)
+                return
+        
         for chart in charts: #CSS selectors
             item = {
                 "position": chart.css("td div::text").get(),
@@ -108,6 +127,7 @@ class ChartsSpider(scrapy.Spider):
         def values(label):
             texts = response.css(f'div.artist_info_left:contains("{label}") + div.artist_info_right::text').getall()
             return "|".join(text.strip() for text in texts if text.strip()) or None
+        
         item["genre"] = values("Genre")
         item["style"] = values("Style") #Note: A number of songs do not list a style
         item["song_url"] = response.url

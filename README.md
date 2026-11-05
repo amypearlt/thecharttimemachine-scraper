@@ -29,6 +29,8 @@ JSON and XML formats can also be used to export data.
 Scrapy's HTTP cache is enabled, allowing previously downloaded webpages to be re-retrieved locally - it prevents redundant website requests, and reduces crawling time.\
 Every record in the exported data should be unique, identified by the *position*, *artist*, *song* and *week* columns in conjunction; each record represents a distinct chart entry.
 
+The raw dataset comprising all 20th century weekly UK singles charts, from 1952 to 1999, can be found on [Kaggle](https://www.kaggle.com/datasets/amypearlt/20th-century-weekly-uk-singles-charts-raw) and used for analysis purposes.
+
 ## A brief definition of web crawling and web scraping
 
 #### <ins>Web Crawler:</ins> An Internet bot that systematically browses the World Wide Web.
