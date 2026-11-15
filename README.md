@@ -29,7 +29,14 @@ JSON and XML formats can also be used to export data.
 Scrapy's HTTP cache is enabled, allowing previously downloaded webpages to be re-retrieved locally - it prevents redundant website requests, and reduces crawling time.\
 Every record in the exported data should be unique, identified by the *position*, *artist*, *song* and *week* columns in conjunction; each record represents a distinct chart entry.
 
-The raw dataset comprising all 20th century weekly UK singles charts, from 1952 to 1999, can be found on [Kaggle](https://www.kaggle.com/datasets/amypearlt/20th-century-weekly-uk-singles-charts-raw) and used for analysis purposes.
+In the repository also includes a Pandas cleaning script for the extracted data. To use it, run:
+
+`python ChartsClean.py -i output/charts.csv -o output/cleancharts.csv`
+
+According to [The Chart Time Machine](https://www.charttimemachine.com/faqs.aspx), genres and styles of songs are sourced from Discogs's API. A small percentage of songs are matched to wrong or multiple releases, so tags can be inaccurate; songs with an excess number of genres or styles, that are clearly erroneous, have been corrected in `OverrideChartsClean.csv`, through a manual reference of the songs' information in the Discogs database. However, some records may still contain incorrect information, such as songs sharing the exact same list of genres and styles for some reason.\
+Some entries from the official UK charts list also appear to be the product of some error - for example, "Ziggy Live" by ZZ Top charted in 1985, but ZZ Top never released a song with this name.
+
+The raw dataset comprising all 20th century weekly UK singles charts, from 1952 to 1999, can be found on [Kaggle](https://www.kaggle.com/datasets/amypearlt/20th-century-weekly-uk-singles-charts-raw/versions/2) and used for analysis purposes.
 
 ## A brief definition of web crawling and web scraping
 
